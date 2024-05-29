@@ -37,7 +37,7 @@ pip install -r requirements.txt
 > If you want to resume training from a specific run, use `--resume_id <run_id>`.
 > The `run_id` can be found in the wandb dashboard.
 
-To train on the CIFAR-10 dataset, run the following command:
+#### To train on the CIFAR-10 dataset, run the following command:
 
 ```shell
 python train.py --r 0.2 --lambda_u 0
@@ -47,7 +47,7 @@ python train.py --r 0.9 --lambda_u 50
 python train.py --r 0.4 --noise_mode asym --lambda_u 0
 ```
 
-To train on the CIFAR-100 dataset, run the following command:
+#### To train on the CIFAR-100 dataset, run the following command:
 
 ```shell
 python train.py --dataset cifar100 --data_path ./data/cifar100/ --r 0.2 --lambda_u 0
@@ -57,7 +57,7 @@ python train.py --dataset cifar100 --data_path ./data/cifar100/ --r 0.9 --lambda
 python train.py --dataset cifar100 --data_path ./data/cifar100/ --r 0.4 --noise_mode asym --lambda_u 0
 ```
 
-To train on the TinyImageNet dataset, run the following command:
+#### To train on the TinyImageNet dataset, run the following command:
 
 ```shell
 cd data && bash prepare_tiny_imagenet.sh && cd ..
@@ -68,7 +68,7 @@ python train.py --dataset tiny_imagenet --data_path ./data/tiny-imagenet-200 --r
 python train.py --dataset tiny_imagenet --data_path ./data/tiny-imagenet-200 --r 0.45 --noise_mode asym --lambda_u 0
 ```
 
-To train on the Clothing1M dataset, prepare the dataset and run the following command:
+#### To train on the Clothing1M dataset, prepare the dataset and run the following command:
 
 <details>
 <summary>Clothing1M dataset file structure (You need to download the dataset from the corresponding website.)</summary>
@@ -100,21 +100,24 @@ To train on the Clothing1M dataset, prepare the dataset and run the following co
 </details>
 
 ```shell
-python train_clothing1m.py --dataset clothing1m --data_path ~/Documents/Clothing1M/ --pretrain
+python train_clothing1m.py --dataset clothing1m --data_path PATH_TO_Clothing1M/ --pretrain
 ```
 
-To train on the WebVision dataset, prepare the dataset and run the following command:
+#### To train on the WebVision dataset, prepare the dataset and run the following command:
 
 <details>
-<summary>WebVision dataset file structure (You need to download the dataset from the corresponding website.)</summary>
+<summary>WebVision dataset file structure (You need to download the dataset from the corresponding website and rearrange the imagenet folder.)</summary>
 
 ```shell
 .
 ├── flickr
 ├── google
-├── ILSVRC2012_devkit_t12
 ├── imagenet
+│   ├── ILSVRC2012_devkit_t12
 │   └── val
+│       ├── n01440764
+│       ├── n01728920
+│       ├── ...
 ├── info
 │   ├── queries_flickr.txt
 │   ├── queries_google.txt
@@ -128,13 +131,17 @@ To train on the WebVision dataset, prepare the dataset and run the following com
 │   ├── train_meta_list_google.txt
 │   └── val_filelist.txt
 ├── test_images_256
-├── val_images_256
+└── val_images_256
 ```
 
 </details>
 
 ```shell
-python train_webvision.py --dataset webvision --data_path ~/Documents/WebVision/ --mcrop
+# decompress ILSVRC2012_img_val.tar and ILSVRC2012_devkit_t12.tar.gz to imagenet/val and imagenet/ILSVRC2012_devkit_t12
+cp ./data/rearrange.py PATH_TO_WEBVISION/imagenet/  # copy rearrange.py to the imagenet folder
+cd PATH_TO_WEBVISION/imagenet/ && python rearrange.py  # rearrange imagenet/val folder
+cd PATH_TO_PLReMix
+python train_webvision.py --dataset webvision --data_path PATH_TO_WebVision/ --mcrop
 ```
 
 ----
