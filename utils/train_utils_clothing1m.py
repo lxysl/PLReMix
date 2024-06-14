@@ -52,26 +52,9 @@ def resume(checkpoint_path, net1, net2, optimizer1, optimizer2, device):
     optimizer1.load_state_dict(checkpoint["optimizer1_state_dict"])
     optimizer2.load_state_dict(checkpoint["optimizer2_state_dict"])
 
-    # move variables to the same device as the model
-    for state in optimizer1.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
-    for state in optimizer2.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
-
     all_loss = checkpoint["all_loss"]
     all_loss_proto = checkpoint["all_loss_proto"]
-    for i in range(len(all_loss)):
-        all_loss[i] = [loss.to(device) for loss in all_loss[i]]
-        all_loss_proto[i] = [loss.to(device) for loss in all_loss_proto[i]]
-
     meta_info = checkpoint["meta_info"]
-    for key in ['probability', 'pred_clean', 'pred_noisy', 'output', 'pseudo_th']:
-        if key in meta_info and meta_info[key] is not None:
-            meta_info[key] = meta_info[key].to(device)
     meta_info['device'] = device
     epoch = checkpoint["epoch"] + 1
 

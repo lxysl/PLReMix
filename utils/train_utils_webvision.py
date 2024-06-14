@@ -52,26 +52,9 @@ def resume(checkpoint_path, net1, net2, optimizer1, optimizer2, device):
     optimizer1.load_state_dict(checkpoint["optimizer1_state_dict"])
     optimizer2.load_state_dict(checkpoint["optimizer2_state_dict"])
 
-    # move variables to the same device as the model
-    for state in optimizer1.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
-    for state in optimizer2.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
-
     all_loss = checkpoint["all_loss"]
     all_loss_proto = checkpoint["all_loss_proto"]
-    for i in range(len(all_loss)):
-        all_loss[i] = [loss.to(device) for loss in all_loss[i]]
-        all_loss_proto[i] = [loss.to(device) for loss in all_loss_proto[i]]
-
     meta_info = checkpoint["meta_info"]
-    for key in ['probability', 'pred_clean', 'pred_noisy', 'output', 'pseudo_th']:
-        if key in meta_info and meta_info[key] is not None:
-            meta_info[key] = meta_info[key].to(device)
     meta_info['device'] = device
     epoch = checkpoint["epoch"] + 1
 
@@ -439,7 +422,8 @@ def uniform_train(args, epoch, net, net2, optimizer, labeled_train_loader, unlab
 def val(args, epoch, net1, net2, val_loader, device, imagenet=False):
     net1.eval()
     net2.eval()
-    correct = 0
+    correct1 = 0
+    correct5 = 0
     total = 0
     with torch.no_grad():
         for batch_idx, batch in enumerate(val_loader):
@@ -449,15 +433,21 @@ def val(args, epoch, net1, net2, val_loader, device, imagenet=False):
             outputs = outputs1 + outputs2
             _, predicted = torch.max(outputs, 1)
 
-            total += targets.size(0)
-            correct += predicted.eq(targets).cpu().sum().item()
-    acc = 100. * correct / total
-    print('\nEpoch:%d   Accuracy:%.2f\n' % (epoch, acc))
+            top1, top5 = accuracy(outputs, targets, topk=(1, 5))
+            total += 1
+            correct1 += top1[0].item()
+            correct5 += top5[0].item()
+    acc1 = correct1 / total
+    acc5 = correct5 / total
+    print('\nEpoch:%d   Top1 Accuracy:%.2f   Top5 Accuracy:%.2f\n' % (epoch, acc1, acc5))
     if not args.wo_wandb:
         if imagenet:
-            wandb.log({'imagenet val accuracy': acc}, step=epoch)
+            wandb.log({'imagenet val top1 accuracy': acc1,
+                       'imagenet val top5 accuracy': acc5}, step=epoch)
         else:
-            wandb.log({'val accuracy': acc}, step=epoch)
+            wandb.log({'val top1 accuracy': acc1,
+                       'val top5 accuracy': acc5}, step=epoch)
+
 
 
 @torch.no_grad()
