@@ -44,6 +44,7 @@ parser.add_argument('--lambda_c', default=1, type=float, help='weight for contra
 parser.add_argument('--p_threshold', default=0.5, type=float, help='clean probability threshold')
 parser.add_argument('--T', default=0.5, type=float, help='sharpening temperature in semi loss')
 parser.add_argument('--topk', default=3, type=int, help='kappa in PLR loss')
+parser.add_argument('--semi_m', default=0.99, type=float, help='momentum of the pseudo selection')
 
 parser.add_argument('--aug', default='autoaug', type=str,
                     choices=['train', 'simclr', 'autoaug', 'randaug'],
@@ -91,7 +92,9 @@ if not args.wo_wandb:
 def main():
     meta_info = {'r': args.r, 'noise_mode': args.noise_mode, 'dataset': args.dataset, 'transform': 'train',
                  'num_classes': args.num_classes, 'probability': None, 'pred_clean': None, 'pred_noisy': None,
-                 'output': None, 'device': device, 'pseudo_th': None, 'multi_crop': args.mcrop,
+                 'output': None, 'device': device, 'pseudo_th': None, 'multi_crop': args.mcrop, 'semi_m': args.semi_m,
+                 'p_model': (torch.ones((args.num_classes)) / args.num_classes).to(device),
+                 'time_p': (torch.ones((args.num_classes)) / args.num_classes).mean().to(device),
                  'noise_file': './data/noise_file/{}/{:.2f}{}.json'.format(
                      args.dataset, args.r, '_asym' if args.noise_mode == 'asym' else '')}
 

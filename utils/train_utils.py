@@ -321,6 +321,24 @@ def noise_correction(proj_outputs, cls_outputs, labels, indices, meta_info, devi
     return labels
 
 
+@torch.no_grad()
+def pseudo_selection(proj_outputs, cls_outputs, labels, meta_info, epoch, num_epochs, device):
+    proj_outputs, cls_outputs, labels = (proj_outputs.to(device), cls_outputs.to(device), labels.to(device))
+    # alpha is cosinely decayed from 1 to 0
+    alpha = 0.5 * (1 + math.cos(math.pi * epoch / num_epochs))
+    avg_outputs = F.softmax((1 - alpha) * proj_outputs + alpha * cls_outputs, dim=1)
+
+    max_probs, _ = torch.max(avg_outputs, dim=-1, keepdim=True)
+    meta_info['time_p'] = meta_info['time_p'] * meta_info['semi_m'] + (1 - meta_info['semi_m']) * max_probs.mean()
+    meta_info['p_model'] = meta_info['p_model'] * meta_info['semi_m'] + (1 - meta_info['semi_m']) * avg_outputs.mean(dim=0)
+
+    max_probs, max_idx = avg_outputs.max(dim=-1)
+    mod = meta_info['p_model'] / torch.max(meta_info['p_model'], dim=-1)[0]
+    mask = max_probs.ge(meta_info['time_p'] * mod[max_idx])
+
+    return mask
+
+
 def uniform_warmup(args, epoch, net, optimizer, train_loader, ce_criterion, info_nce_loss, conf_penalty, scaler,
                    device):
     ce_losses = AverageMeter('CE Loss', ':.4e')
@@ -417,24 +435,14 @@ def uniform_train(args, epoch, net, net2, optimizer, labeled_train_loader, unlab
             progress.display(batch_idx)
 
     # noise correction
-    all_indices_x = torch.tensor(meta_info['pred_clean'])
-    clean_labels_x = noise_correction(meta_info['proj_outputs'][all_indices_x, :],
-                                      meta_info['cls_outputs'][all_indices_x, :],
-                                      meta_info['pred_label'][all_indices_x],
-                                      all_indices_x, meta_info, device)
-    all_indices_u = torch.tensor(meta_info['pred_noisy'])
-    clean_labels_u = noise_correction(meta_info['proj_outputs'][all_indices_u, :],
-                                      meta_info['cls_outputs'][all_indices_u, :],
-                                      meta_info['pred_label'][all_indices_u],
-                                      all_indices_u, meta_info, device)
+    mask = pseudo_selection(meta_info['proj_outputs'], meta_info['cls_outputs'], meta_info['pred_label'],
+                            meta_info, epoch, args.num_epochs, device)
 
     # update class prototypes
     if epoch > args.warm_up - 1:
         features = meta_info['features'].to(device)
         labels = meta_info['pred_label'].to(device)
-        labels[all_indices_x] = clean_labels_x
-        labels[all_indices_u] = clean_labels_u
-        net.update_prototypes(features, labels)
+        net.update_prototypes(features[mask], labels[mask])
 
 
 @torch.no_grad()
